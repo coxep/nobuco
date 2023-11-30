@@ -234,3 +234,12 @@ def converter_linspace(start, end, steps: _int, *, out: Optional[Tensor] = None,
     def func(start, end, steps, *, out = None, dtype = None, layout = None, device = None, pin_memory = False, requires_grad = False):
         return tf.linspace(start, end, steps)
     return func
+
+# @converter(torch.Tensor.new_tensor, channel_ordering_strategy=ChannelOrderingStrategy.FORCE_PYTORCH_ORDER)
+# def converter_new_tensor(tensor, data, dtype=None, device=None, requires_grad=False):
+#     def func(tensor, data, dtype=None, device=None, requires_grad=False):
+#         # Create a TensorFlow constant with the same dtype as the input tensor
+#         # TensorFlow can handle Python scalars, so no need to check explicitly
+#         return tf.constant(data, dtype=tensor.dtype if dtype is None else dtype)
+
+#     return func

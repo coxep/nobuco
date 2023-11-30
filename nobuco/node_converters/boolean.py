@@ -20,6 +20,11 @@ def converter_logical_or(input: Tensor, other):
         return tf.logical_or(input, other)
     return func
 
+@converter(torch.Tensor.__ior__, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
+def converter_t_ior(self, other):
+    def func(self, other):
+        return tf.logical_or(self, other)
+    return func
 
 @converter(torch.Tensor.__invert__, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
 def converter_invert(input: Tensor):

@@ -36,6 +36,12 @@ def converter_add(input, other, *args, **kwargs):
         return input + other
     return func
 
+@converter(torch.neg, torch.Tensor.neg, channel_ordering_strategy=ChannelOrderingStrategy.FORCE_PYTORCH_ORDER)
+def converter_t_neg(self):
+    def func(self):
+        return tf.negative(self)
+
+    return func
 
 @converter(torch.sub, torch.subtract, torch.Tensor.sub, torch.Tensor.sub_, torch.Tensor.__sub__, torch.Tensor.__isub__, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS_OR_PYTORCH, autocast=True)
 def converter_sub(input: Union[Tensor, Number], other: Union[Tensor, Number], *, alpha: Optional[Number]=1, out: Optional[Tensor]=None):

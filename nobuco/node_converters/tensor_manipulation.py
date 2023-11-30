@@ -258,6 +258,25 @@ def converter_unflatten(input: Tensor, dim: _int, sizes):
         return tf.reshape(input, (*start_shape, *sizes, *end_shape))
     return func
 
+@converter(torch.Tensor.unflatten, torch.unflatten, channel_ordering_strategy=ChannelOrderingStrategy.FORCE_PYTORCH_ORDER)
+def converter_t_unflatten(self, dim, sizes):
+    def func(self, dim, sizes):
+        n_dims = len(self.shape)
+        dim = _dim_make_positive(dim, n_dims)
+
+        # Before and after the dimension to unflatten
+        shape_before = self.shape[:dim]
+        shape_after = self.shape[dim + 1:]
+
+        # Expand the specified dimension into multiple dimensions
+        unflatten_shape = sizes if isinstance(sizes, tuple) else (sizes,)
+
+        # New shape combines the unchanged dimensions with the expanded dimensions
+        new_shape = (*shape_before, *unflatten_shape, *shape_after)
+
+        return tf.reshape(self, new_shape)
+
+    return func
 
 @converter(torch.Tensor.narrow, channel_ordering_strategy=ChannelOrderingStrategy.MANUAL)
 def converter_narrow(self, dimension, start, length):
@@ -328,7 +347,7 @@ def torch_gather(x, indices, gather_axis):
     return reshaped
 
 
-@converter(torch.gather, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
+@converter(torch.gather, torch.Tensor.gather, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
 def converter_gather(input: Tensor, dim, index: Tensor, *, sparse_grad: _bool=False, out: Optional[Tensor]=None):
     n_dims = input.dim()
 
@@ -336,4 +355,71 @@ def converter_gather(input: Tensor, dim, index: Tensor, *, sparse_grad: _bool=Fa
         if get_channel_order(input) == ChannelOrder.TENSORFLOW:
             dim = dim_pytorch2keras(dim, n_dims)
         return torch_gather(input, index, dim)
+    return func
+
+
+@converter(torch.Tensor.repeat_interleave, channel_ordering_strategy=ChannelOrderingStrategy.FORCE_PYTORCH_ORDER)
+def converter_t_repeat_interleave(self, repeats, dim=None):
+    def func(self, repeats, dim=None):
+        # Handling the dimension argument
+        if dim is None:
+            flat_input = tf.reshape(self, [-1])
+            return tf.repeat(flat_input, repeats)
+
+        n_dims = len(self.shape)
+        dim = _dim_make_positive(dim, n_dims)
+        shape_before = self.shape[:dim]
+        shape_after = self.shape[dim + 1:]
+
+        # Expanding the tensor before repeating along the specified dimension
+        expanded_tensor = tf.reshape(self, (*shape_before, -1, *shape_after))
+        repeated_tensor = tf.repeat(expanded_tensor, repeats, axis=dim)
+
+        return repeated_tensor
+
+    return func
+
+
+# @converter(torch.Tensor.gather, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
+# def converter_t_gather(self, dim, index):
+#     def func(self, dim, index):
+#         # Convert PyTorch dimension to TensorFlow dimension if necessary
+#         if get_channel_order(self) == ChannelOrder.TENSORFLOW:
+#             dim = dim_pytorch2keras(dim, tf.rank(self))
+
+#         return tf.gather(self, index, axis=dim)
+#     return func
+
+# @converter(torch.Tensor.index_select, channel_ordering_strategy=ChannelOrderingStrategy.FORCE_PYTORCH_ORDER)
+# def converter_t_index_select(input, dim, index):
+#     def func(input, dim, index):
+#         # TensorFlow's advanced indexing can be used directly
+#         # First, handle the case where `dim` might be negative
+#         dim = dim if dim >= 0 else len(input.shape) + dim
+
+#         # TensorFlow's advanced indexing works differently from PyTorch's index_select
+#         # We need to create a meshgrid and use it for gathering
+#         indices_shape = [-1 if i == dim else 1 for i in range(len(input.shape))]
+#         index = tf.reshape(index, indices_shape)
+#         mesh = tf.meshgrid(*[tf.range(d) for d in input.shape], indexing='ij')
+#         mesh[dim] = index
+#         return tf.gather_nd(input, tf.stack(mesh, -1))
+
+#     return func
+
+@converter(torch.Tensor.index_select, channel_ordering_strategy=ChannelOrderingStrategy.FORCE_PYTORCH_ORDER)
+def converter_t_index_select(input, dim, index):
+    def func(input, dim, index):
+        # TensorFlow's advanced indexing can be used directly
+        # First, handle the case where `dim` might be negative
+        dim = dim if dim >= 0 else len(input.shape) + dim
+
+        # TensorFlow's advanced indexing works differently from PyTorch's index_select
+        # We need to create a meshgrid and use it for gathering
+        indices_shape = [-1 if i == dim else 1 for i in range(len(input.shape))]
+        index = tf.reshape(index, indices_shape)
+        mesh = tf.meshgrid(*[tf.range(d) for d in input.shape], indexing='ij')
+        mesh[dim] = index
+        return tf.gather_nd(input, tf.stack(mesh, -1))
+
     return func

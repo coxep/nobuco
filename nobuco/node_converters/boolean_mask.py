@@ -33,3 +33,16 @@ def converter_where(condition: Tensor, input=None, other=None):
         else:
             return tf.where(condition)[..., 0]
     return func
+
+# @converter(torch.where, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
+# def converter_where(condition, x=None, y=None):
+#     def func(condition, x=None, y=None):
+#         if x is not None and y is not None:
+#             # Element-wise selection: torch.where(condition, x, y)
+#             return tf.where(condition, x, y)
+#         else:
+#             # Condition-based indexing: torch.where(condition)
+#             # Adjusting the shape to match PyTorch's output (tuple of 1D tensors)
+#             indices = tf.where(condition)
+#             return [indices[:, i] for i in range(indices.shape[1])]
+#     return func

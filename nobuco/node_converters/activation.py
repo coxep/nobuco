@@ -15,6 +15,13 @@ from nobuco.converters.node_converter import converter
 from nobuco.converters.tensor import dim_pytorch2keras
 
 
+@converter(torch.nn.functional.logsigmoid, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
+def logsigmoid(input: torch.Tensor):
+    def func(input):
+        return tf.math.log_sigmoid(input)
+    return func
+
+
 def hard_sigmoid_pytorch_compatible(x):
   x = tf.clip_by_value(x/6 + 1/2, clip_value_min=0, clip_value_max=1)
   return x
