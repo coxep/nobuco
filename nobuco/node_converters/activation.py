@@ -168,7 +168,7 @@ def converter_softmax(input: Tensor, dim: Optional[int] = None, _stacklevel: int
     return func
 
 
-@converter(torch.log_softmax, torch.Tensor.log_softmax, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
+@converter(torch.nn.functional.log_softmax, torch.log_softmax, torch.Tensor.log_softmax, channel_ordering_strategy=ChannelOrderingStrategy.MINIMUM_TRANSPOSITIONS)
 def converter_log_softmax(input: Tensor, dim, *, dtype: Optional[_dtype]=None):
     num_dims = input.dim()
 
